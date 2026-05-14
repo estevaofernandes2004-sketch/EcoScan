@@ -1,0 +1,8 @@
+[theme]
+# Primary action colour — buttons, checkbox ticks, slider thumb, links.
+# Sampled from the leaf and ring in the EcoScan logo (mid forest green).
+primaryColor = "#386641"
+# Sidebar and secondary widget surfaces — sampled from the EcoScan
+# logo's pale-sage background so the sidebar visually belongs to the
+# same brand as the icon.
+secondaryBackgroundColor = "#D9E5DA"
