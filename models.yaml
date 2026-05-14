@@ -1,0 +1,85 @@
+# EcoScan — AI configuration
+# -----------------------------
+# Three model roles. All run locally through Ollama. Edit prompts and model
+# names here; no code changes needed.
+
+# 1. Vision model — turns a satellite image into a textual description.
+image_model:
+  name: moondream
+  prompt: >
+    Describe this satellite image in detail. Focus on: land cover type
+    (forest, urban, agricultural, water, desert, etc.), vegetation density
+    and health, signs of human activity or development, visible environmental
+    changes such as deforestation, erosion, or pollution, and any other
+    notable features visible from above.
+  settings:
+    temperature: 0.5
+
+# 2. Risk model — answers structured environmental risk questions about the
+#    description produced by the vision model. Output must end with the
+#    literal "DANGER: YES" or "DANGER: NO" line.
+text_model:
+  name: llama3.2
+  prompt: >
+    You are an environmental risk assessment expert. You have received the
+    following description of a satellite image:
+
+    "{description}"
+
+    Based on this description, answer each of the following questions briefly:
+    1. Is there evidence of deforestation or significant loss of vegetation?
+    2. Are there signs of urban sprawl or infrastructure encroachment on natural areas?
+    3. Is there visible pollution, industrial activity, or waste dumping?
+    4. Are there signs of soil erosion, land degradation, or desertification?
+    5. Are there signs of water stress, flooding, or reduced water bodies?
+
+    After answering the questions, provide a short overall risk summary.
+    Your final line must be exactly one of the following two options:
+    DANGER: YES
+    DANGER: NO
+  settings:
+    temperature: 0.2
+    max_tokens: 500
+
+# 3. Synthesis model — receives ALL findings (Overpass / GBIF / OpenAQ /
+#    Nominatim, plus the optional satellite branch) and returns the final
+#    structured risk report as JSON. Placeholders {title}, {description},
+#    {lat}, {lon}, {radius_m}, {categories}, {findings} are filled in by
+#    app/investigation.py before the prompt is sent.
+synthesis:
+  name: llama3.2
+  prompt: |
+    You are an environmental risk analyst working for a European environmental
+    inspection agency. You are given a preliminary investigation with the
+    location, context, and all evidence collected from public sources
+    (OpenStreetMap, GBIF, OpenAQ, and optionally a visual analysis of a
+    satellite image).
+
+    INVESTIGATION CONTEXT
+    Title: {title}
+    Description: {description}
+    Coordinates: ({lat}, {lon}) — radius {radius_m} m
+    Selected categories: {categories}
+
+    EVIDENCE COLLECTED
+    {findings}
+
+    TASK
+    Return EXCLUSIVELY a valid JSON object (no extra text, no markdown) with
+    the following structure, in English:
+
+    {
+      "risk_score": <integer 0-100, where 100 is the highest risk>,
+      "summary": "<2-4 sentences explaining your assessment>",
+      "drivers": ["<risk driver 1>", "<risk driver 2>", ...],
+      "recommendations": ["<concrete action 1>", "<concrete action 2>", ...]
+    }
+
+    Be conservative: if the evidence is weak or contradictory, lower the
+    score and justify. Focus the recommendations on actionable next steps
+    for an inspection team (site visit, sample collection, contact with the
+    local authority, etc.). Note: complaint descriptions may be in Portuguese
+    — translate your reasoning into English regardless.
+  settings:
+    temperature: 0.2
+    num_predict: 800
